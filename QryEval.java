@@ -67,19 +67,21 @@ public class QryEval {
     //  Open the index and initialize the retrieval model.
 
     Idx.open (parameters.get ("indexPath"));
+    if(parameters.containsKey("retrievalAlgorithm")) {
+      if (parameters.get("retrievalAlgorithm").toLowerCase().equals("letor")) {
+        //TrainModels
+        LeToR.getInstance().train();
+        LeToR.getInstance().processQueries(parameters.get("queryFilePath"), outputFilePath);
+      } else {
+        RetrievalModel model = initializeRetrievalModel(parameters);
+        //  Perform experiments.
+        processQueryFile(parameters.get("queryFilePath"), model);
 
-    if(parameters.get("retrievalAlgorithm").toLowerCase().equals("letor"))
-    {
-      //TrainModels
-      LeToR.getInstance().train();
-      LeToR.getInstance().processQueries(parameters.get("queryFilePath"),outputFilePath);
+      }
     }
     else
     {
-      RetrievalModel model = initializeRetrievalModel(parameters);
-      //  Perform experiments.
-      processQueryFile(parameters.get("queryFilePath"), model);
-
+      processQueryFile(parameters.get("queryFilePath"), null);
     }
 
 
@@ -278,13 +280,15 @@ public class QryEval {
 
             }
 
-            if(model instanceof RetrievalModelIndri) {
+            if(model==null || model instanceof RetrievalModelIndri)
+            {
               r = Diversifier.getInstance().diversify(initialRankingList, intentRankingLists,false);
             }
             else
             {
               r = Diversifier.getInstance().diversify(initialRankingList, intentRankingLists,true);
             }
+
             printResults(qid, r,bufferedWriter);
 
         }
@@ -394,8 +398,7 @@ public class QryEval {
 
     if (! (parameters.containsKey ("indexPath") &&
            parameters.containsKey ("queryFilePath") &&
-           parameters.containsKey ("trecEvalOutputPath") &&
-           parameters.containsKey ("retrievalAlgorithm"))) {
+           parameters.containsKey ("trecEvalOutputPath"))) {
       throw new IllegalArgumentException
         ("Required parameters were missing from the parameter file.");
     }

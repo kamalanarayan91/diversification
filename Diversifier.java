@@ -1,7 +1,4 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -31,6 +28,8 @@ public class Diversifier
     private static Diversifier instance = null;
 
     private HashMap<String,ArrayList<String>> intentsMap;
+    private HashMap<String,ScoreList> initialRankingsMap;
+    private HashMap<String,ArrayList<ScoreList>> intentRankingsMap;
 
 
     private DiversificationAlgorithm diversificationAlgorithm;
@@ -172,12 +171,85 @@ public class Diversifier
 
     public ArrayList<ScoreList> getIntentRankings (String queryId)
     {
-        return null;
+        return intentRankingsMap.get(queryId);
     }
 
-    public ScoreList getInitialRanking(String queryId)
+    public ScoreList getInitialRanking(String queryId) throws Exception
     {
-        return null;
+        if(initialRankingsMap!=null)
+        {
+            return initialRankingsMap.get(queryId);
+        }
+        if(initialRankingsMap == null)
+        {
+            initialRankingsMap = new HashMap<>();
+            intentRankingsMap = new HashMap<>();
+
+        }
+
+        FileInputStream fileInputStream = new FileInputStream(initialRankingFile);
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream));
+        HashMap<String,String> prevIntentIdMap = new HashMap<>();
+        String line;
+        while((line = bufferedReader.readLine())!=null)
+        {
+           // System.out.println(line);
+            String[] splits = line.split("\\s+");
+            String qid = splits[0];
+            String externalDocId = splits[2];
+            double score = Double.parseDouble(splits[4]);
+            int docid = Idx.getInternalDocid(externalDocId);
+
+            if(!qid.contains("."))
+            {
+                ScoreList res;
+                if (initialRankingsMap.containsKey(qid))
+                {
+                    res = initialRankingsMap.get(qid);
+                }
+                else
+                {
+                    res = new ScoreList();
+                    initialRankingsMap.put(qid, res);
+                }
+
+                res.add(docid, score);
+            }
+            else
+            {
+                int dotIndex = qid.indexOf('.');
+                String id = qid.substring(0,dotIndex);
+                String intentId = qid.substring(dotIndex+1);
+
+
+                if(intentRankingsMap.containsKey(id))
+                {
+                    ArrayList<ScoreList> scoreLists = intentRankingsMap.get(id);
+                    if(!prevIntentIdMap.get(id).equals(intentId))
+                    {
+                        scoreLists.add(new ScoreList());
+                        prevIntentIdMap.put(id,intentId);
+
+                    }
+                    scoreLists.get(scoreLists.size()-1).add(docid,score);
+
+                }
+                else
+                {
+                    //new intent
+                    ArrayList<ScoreList> scoreLists = new ArrayList<ScoreList>();
+                    intentRankingsMap.put(id,scoreLists);
+
+                    scoreLists.add(new ScoreList());
+                    scoreLists.get(scoreLists.size()-1).add(docid,score);
+                    prevIntentIdMap.put(id,intentId);
+
+                }
+
+            }
+
+        }
+        return initialRankingsMap.get(queryId);
     }
 
     public double getLambda() {

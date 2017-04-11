@@ -89,13 +89,8 @@ public class DiversificationAlgorithmPM2 extends DiversificationAlgorithm
             }
 
             selectedDocs.add(selectedDocId);
-            try {
-                System.out.println(Idx.getExternalDocid(selectedDocId));
-            }
-            catch (Exception e){}
 
             result.add(selectedDocId,selectedDocScore);
-
 
             //update coverage of each intent
             ArrayList<Double> scores = scoreMap.get(selectedDocId);
@@ -127,12 +122,14 @@ public class DiversificationAlgorithmPM2 extends DiversificationAlgorithm
         for(int index=0;index<size;index++)
         {
             ArrayList<Double> dummy = new ArrayList<Double>();
-            dummy.add(0.0);
-            dummy.add(0.0);
-            dummy.add(0.0);
-            dummy.add(0.0);
+            for(int inn=0;inn<intentRankings.size();inn++)
+            {
+                dummy.add(0.0);
+            }
             result.put(initialRankings.getDocid(index),dummy);
         }
+
+
 
 
         for(int intentIndex=0;intentIndex<intentRankings.size();intentIndex++)
