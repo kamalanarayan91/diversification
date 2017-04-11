@@ -187,7 +187,7 @@ public class QryEval {
    */
   static void processQueryFile(String queryFilePath,
                                RetrievalModel model)
-      throws IOException {
+      throws Exception {
 
     BufferedReader input = null;
     BufferedWriter bufferedWriter = null;
@@ -243,13 +243,58 @@ public class QryEval {
           QryExpander.printExpandedQueryToFile(expandedQuery,qid);
           query = QryExpander.getMergedQuery(query,expandedQuery);
 
+          r = processQuery(query, model);
+          printResults(qid, r,bufferedWriter);
+
+
         }
+        else if(Diversifier.getInstance().isDiversifierEnabled())
+        {
+            Diversifier.getInstance().parseIntents();
+            ScoreList initialRankingList = null;
+            ArrayList<ScoreList> intentRankingLists = null;
 
-        /**End - query expansion**/
-        r = processQuery(query, model);
+            if(Diversifier.getInstance().getInitialRankingFile() != null)
+            {
+                initialRankingList = Diversifier.getInstance().getInitialRanking(qid);
+                intentRankingLists = Diversifier.getInstance().getIntentRankings(qid);
+            }
+            else
+            {
+              initialRankingList = processQuery(query,model);
+              //printResults(qid,initialRankingList,bufferedWriter);
+              ArrayList<String> intents = Diversifier.getInstance().getIntents(qid);
+              intentRankingLists = new ArrayList<ScoreList>();
+              int index=1;
+              for(String intent : intents)
+              {
+                intentRankingLists.add(processQuery(intent,model));
+                //printResults(qid+":"+Integer.toString(index),processQuery(intent,model),bufferedWriter);
+                index++;
+              }
+              //input.close();
+              //bufferedWriter.close();
+              //System.exit(-1);
 
+            }
 
-        printResults(qid, r,bufferedWriter);
+            if(model instanceof RetrievalModelIndri) {
+              r = Diversifier.getInstance().diversify(initialRankingList, intentRankingLists,false);
+            }
+            else
+            {
+              r = Diversifier.getInstance().diversify(initialRankingList, intentRankingLists,true);
+            }
+            printResults(qid, r,bufferedWriter);
+
+        }
+        else
+        {
+          /**End - query expansion**/
+          r = processQuery(query, model);
+          printResults(qid, r,bufferedWriter);
+
+        }
 
       }
     } catch (IOException ex) {
@@ -325,7 +370,7 @@ public class QryEval {
    *  @return The parameters, in <key, value> format.
    */
   private static Map<String, String> readParameterFile (String parameterFileName)
-    throws IOException {
+    throws Exception {
 
     Map<String, String> parameters = new HashMap<String, String>();
 
@@ -480,6 +525,54 @@ public class QryEval {
     if(parameters.containsKey("letor:testingDocumentScores")){
       LeToR.getInstance().setTestingDocumentScores(parameters.get("letor:testingDocumentScores"));
     }
+
+
+    /**
+     * diversity= Acceptable values are "true" and "false". This value controls whether diversity is performed (fb=true).
+     diversity:initialRankingFile= The value is a string that contains the name of a file (in trec_eval input format) that contains document rankings for queries and query intents.
+     diversity:maxInputRankingsLength= Acceptable values are integers > 0. This value determines the (maximum) number of documents in the relevance ranking and the intent rankings that your software should use for diversification. Your software should ignore documents below this ranking.
+     diversity:maxResultRankingLength= Acceptable values are integers > 0. This value determines the number of documents in the diversified ranking that your software will produce.
+     diversity:algorithm= Acceptable values are "PM2" and "xQuAD" (case does not matter). This value controls the diversification algorithm used by your software.
+     diversity:intentsFile= The path to the query intents file.
+     diversity:lambda= Acceptable values are in the range [0.0, 1.0].
+     */
+
+    if(parameters.containsKey("diversity"))
+    {
+      Diversifier.getInstance().setDiversity(Boolean.parseBoolean(parameters.get("diversity")));
+    }
+
+    if(parameters.containsKey("diversity:initialRankingFile"))
+    {
+      Diversifier.getInstance().setInitialRankingFile(parameters.get("diversity:initialRankingFile"));
+    }
+
+    if(parameters.containsKey("diversity:maxInputRankingsLength"))
+    {
+      Diversifier.getInstance().setMaxInputRankingsLength(Integer.parseInt(parameters.get("diversity:maxInputRankingsLength")));
+    }
+
+    if(parameters.containsKey("diversity:maxResultRankingLength"))
+    {
+      Diversifier.getInstance().setMaxResultRankingLength(Integer.parseInt(parameters.get("diversity:maxResultRankingLength")));
+    }
+
+    if(parameters.containsKey("diversity:algorithm"))
+    {
+      Diversifier.getInstance().setAlgorithm(parameters.get("diversity:algorithm"));
+    }
+
+    if(parameters.containsKey("diversity:intentsFile"))
+    {
+      Diversifier.getInstance().setIntentsFile(parameters.get("diversity:intentsFile"));
+    }
+
+    if(parameters.containsKey("diversity:lambda"))
+    {
+      Diversifier.getInstance().setLambda(Double.parseDouble(parameters.get("diversity:lambda")));
+    }
+
+
 
 
     return parameters;
