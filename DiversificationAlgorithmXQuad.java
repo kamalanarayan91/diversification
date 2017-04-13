@@ -74,8 +74,16 @@ public class DiversificationAlgorithmXQuad extends DiversificationAlgorithm
 
             }
 
+            /*
+            try{
+                System.out.println(selectedDocId);
+                System.out.println(Idx.getExternalDocid(selectedDocId) + " " + selectedDocScore);
+            }
+            catch (Exception e){}*/
+
 
             selectedDocs.add(selectedDocId);
+
             result.add(selectedDocId,selectedDocScore);
             totalSize++;
         }

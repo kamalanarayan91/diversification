@@ -1,6 +1,7 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * Created by sharath on 7/4/17.
@@ -166,6 +167,8 @@ public class Diversifier
                 scorelist.truncate(maxInputRankingsLength);
             }
         }
+
+
         return diversificationAlgorithm.getDiversifiedRanking(initialRankings,intentRankings);
     }
 
@@ -193,6 +196,7 @@ public class Diversifier
         String line;
         while((line = bufferedReader.readLine())!=null)
         {
+            //System.out.println(line);
            // System.out.println(line);
             String[] splits = line.split("\\s+");
             String qid = splits[0];
@@ -259,27 +263,35 @@ public class Diversifier
     public void regularize(ScoreList initialRankings, ArrayList<ScoreList> intentRankings)
     {
         initialRankings.sort();
-        initialRankings.truncate(maxInputRankingsLength);
+        int truncateLimit = Math.min(maxInputRankingsLength,initialRankings.size());
+        initialRankings.truncate(truncateLimit);
 
         double max = Double.MIN_VALUE;
         int index=0;
         int size = initialRankings.size();
         double sum = 0;
-        for(;index< size;index++){
+        HashSet<Integer> includeDocs= new  HashSet<>();
+        for(;index< size;index++)
+        {
             sum = sum + initialRankings.getDocidScore(index);
+            includeDocs.add(initialRankings.getDocid(index));
         }
+
         max= sum;
+
+
 
         for(ScoreList scorelist : intentRankings)
         {
             sum=0;
             scorelist.sort();
-            scorelist.truncate(maxInputRankingsLength);
+            scorelist.truncate(truncateLimit);
 
 
             size = scorelist.size();
             for(index=0;index< size;index++){
-                sum = sum + scorelist.getDocidScore(index);
+                if(includeDocs.contains(scorelist.getDocid(index)))
+                    sum = sum + scorelist.getDocidScore(index);
             }
 
             if(max<sum)
@@ -289,7 +301,7 @@ public class Diversifier
         }
 
         //normalize
-        size = initialRankings.size();
+        size = truncateLimit;
         for(index=0;index< size;index++)
         {
 
@@ -302,6 +314,7 @@ public class Diversifier
             size = scorelist.size();
             for(index=0;index< size;index++)
             {
+                if(includeDocs.contains(scorelist.getDocid(index)))
                 scorelist.setDocidScore(index,scorelist.getDocidScore(index)/max);
             }
 

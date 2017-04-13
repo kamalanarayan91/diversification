@@ -27,6 +27,7 @@ public class DiversificationAlgorithmPM2 extends DiversificationAlgorithm
         //preprocessScores
         HashMap<Integer, ArrayList<Double>> scoreMap = preProcessScores(initialRankings,intentRankings);
         HashSet<Integer> selectedDocs = new HashSet<Integer>();
+        double lastpm2Score = 0.0;
 
         while(totalSize<resultLength)
         {
@@ -52,15 +53,13 @@ public class DiversificationAlgorithmPM2 extends DiversificationAlgorithm
             }
 
 
-
             double selectedDocScore = Double.MIN_VALUE;
             int selectedDocId = -1;
 
-
+            int zeroCount=0;
             for(int initialIntentIndex=0; initialIntentIndex<inputLength;initialIntentIndex++)
             {
                 int docid = initialRankings.getDocid(initialIntentIndex);
-
 
                 if(selectedDocs.contains(docid))
                 {
@@ -80,6 +79,12 @@ public class DiversificationAlgorithmPM2 extends DiversificationAlgorithm
                         pm2score += lambda*(qt[selectedIntent]  *scores.get(scoreIndex));
                     }
                 }
+                if(pm2score>0.0){
+                    lastpm2Score  = pm2score;
+                }
+                if(pm2score==0.0){
+                    zeroCount++;
+                }
 
                 if(pm2score>selectedDocScore)
                 {
@@ -88,25 +93,57 @@ public class DiversificationAlgorithmPM2 extends DiversificationAlgorithm
                 }
             }
 
-            selectedDocs.add(selectedDocId);
 
-            result.add(selectedDocId,selectedDocScore);
-
-            //update coverage of each intent
-            ArrayList<Double> scores = scoreMap.get(selectedDocId);
-            double sum = 0.0;
-
-            for(double d:scores)
+            if(selectedDocId==-1)
             {
-                sum +=d;
+
+                if(zeroCount !=0 && zeroCount + selectedDocs.size()== inputLength){
+                    System.out.println("zerocount detected");
+                    double relevanceScore = lastpm2Score-0.0001;
+
+                    for (int initialIndex = 0; initialIndex < inputLength; initialIndex++) {
+                        int docid = initialRankings.getDocid(initialIndex);
+                        if (selectedDocs.contains(docid)) {
+                            continue;
+                        } else {
+                            totalSize++;
+
+                            result.add(docid,relevanceScore);
+                            relevanceScore = relevanceScore-0.0001;
+
+                        }
+                    }
+
+                    //everything is zero from this point
+
+                }
+                else{
+                    System.out.println("Error in PM2 Scores!!");
+                }
+
             }
-            for(int index=0;index<s.length;index++)
-            {
-                s[index] += scores.get(index)/sum;
+            else {
+
+                selectedDocs.add(selectedDocId);
+
+                result.add(selectedDocId, selectedDocScore);
+
+
+                //update coverage of each intent
+                ArrayList<Double> scores = scoreMap.get(selectedDocId);
+                double sum = 0.0;
+
+                for (double d : scores) {
+                    sum += d;
+                }
+                for (int index = 0; index < s.length; index++) {
+                    s[index] += scores.get(index) / sum;
+                }
+
+                totalSize++;
+                startIndex++;
             }
 
-            totalSize++;
-            startIndex++;
         }
 
         result.sort();

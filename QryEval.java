@@ -280,7 +280,7 @@ public class QryEval {
 
             }
 
-            if(model==null || model instanceof RetrievalModelIndri)
+            if(model != null && model instanceof RetrievalModelIndri)
             {
               r = Diversifier.getInstance().diversify(initialRankingList, intentRankingLists,false);
             }
